@@ -2,6 +2,20 @@
 #include <Windows.h> // windows API
 #pragma comment(lib, "ws2_32.lib") 
 
+// 将这个结构体按1字节对齐
+#pragma	pack(push, 1)
+struct PacketHeader {
+	int magic;    // 4字节包头标识
+	int cmd;      // 4字节命令号
+	int body_len; // 数据长度
+};
+#pragma pack(pop)
+
+struct Packet {
+	PacketHeader header; // 包头
+	char body[];         // 包数据，不固定长度
+};
+
 int main() {
 	// 客户端网络编程步骤
 	// 1. 初始化socket链接
@@ -35,16 +49,18 @@ int main() {
 		// 接收用户输入 stdin: 标准输入，stdout: 标准输出，stderr: 标准错误输出
 		//printf("请输入要发送的数据：");
 		//fgets(buffer, 1024, stdin);
-		send(server_socket, buffer, 20, 0);
+
+		Packet* packet = (Packet*)malloc(sizeof(PacketHeader) + 10);
+		packet->header.magic = 0x55AA77CC; // 包头标识
+		packet->header.cmd = 2000;         // 命令号
+		packet->header.body_len = 10;	   // 数据长度
+
+		// 内存复制函数
+		memcpy(packet->body, buffer, 10);
+		send(server_socket, (char*)&packet->header.magic, packet->header.body_len + sizeof(PacketHeader), 0);
+		// 释放内存
+		free(packet);
 		printf("client send data：%s\r\n", buffer);
-		// 等待接收数据
-		//int len = recv(server_socket, recv_buffer, 1024, 0);
-		//if (len > 0) {
-		//	printf("收到服务器数据：%s\r\n", recv_buffer);
-		//}
-		//else {
-		//	printf("接收服务器数据失败\r\n");
-		//}
 		// Sleep可以让程序休眠
 		Sleep(10);
 	}
