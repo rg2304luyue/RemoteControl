@@ -25,19 +25,31 @@ int main() {
 	printf("连接服务器成功\r\n");
 
 	// 3. 发送数据
-	char buffer[1024] = "Hello, Server!";
+	char buffer[1024];
 	char recv_buffer[1024];
-	send(server_socket, buffer, 1024, 0);
-	printf("客户端发送数据：%s\r\n", buffer);
-	// 4. 接收数据
-	int len = recv(server_socket, recv_buffer, 1024, 0);
-	if(len > 0) {
-		printf("收到服务器数据：%s\r\n", recv_buffer);
-	} 
-	else {
-		printf("接收服务器数据失败\r\n");
+	int count = 0; // 记录发送数据的次数
+	while (true) {
+		count++;
+		// 准备发送数据 sprintf: 把一个格式化字符串写入缓冲区
+		sprintf_s(buffer, "packet:%d", count);
+		// 接收用户输入 stdin: 标准输入，stdout: 标准输出，stderr: 标准错误输出
+		//printf("请输入要发送的数据：");
+		//fgets(buffer, 1024, stdin);
+		send(server_socket, buffer, 20, 0);
+		printf("client send data：%s\r\n", buffer);
+		// 等待接收数据
+		//int len = recv(server_socket, recv_buffer, 1024, 0);
+		//if (len > 0) {
+		//	printf("收到服务器数据：%s\r\n", recv_buffer);
+		//}
+		//else {
+		//	printf("接收服务器数据失败\r\n");
+		//}
+		// Sleep可以让程序休眠
+		Sleep(10);
 	}
-
+	
+	closesocket(server_socket);
 	WSACleanup();
 	return 0;
 }

@@ -40,13 +40,22 @@ int main() {
 	printf("客户端连接成功\r\n");
 	// 6. 处理客户端请求
 	char buffer[1024];
-	// 返回客户端发送的数据
-	int len = recv(client_socket, buffer, 1024, 0);
-	printf("收到客户端数据：%s\r\n", buffer);
-	// 7. 发送数据
-	send(client_socket, buffer, 1024, 0);
-	printf("服务器发送数据：%s\r\n", buffer);
-	getchar(); // 等待输入，防止程序结束
+	while (true) { // 循环处理客户端请求，直到客户端断开连接
+		// 返回客户端发送的数据，阻塞等待客户端发送数据
+		int len = recv(client_socket, buffer, 1024, 0);
+		// 换种打印方式
+		fwrite(buffer, 1, len, stdout);
+		fwrite("\r\n----\r\n", 1, 8, stdout);
+		//printf("收到客户端数据：%s\r\n", buffer);
+		// 7. 发送数据
+		//send(client_socket, buffer, 1024, 0);
+		//printf("服务器发送数据：%s\r\n", buffer);
+		// 模拟服务器处理命令耗时过程
+		Sleep(1000);
+	}
+	// 关闭套接字
+	closesocket(client_socket);
+	closesocket(server_socket);
 	// 清除
 	WSACleanup();
 	return 0;
