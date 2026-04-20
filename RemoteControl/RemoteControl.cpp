@@ -22,6 +22,7 @@ struct Packet {
 };
 
 int GetPacketLen(Packet* pck);
+Packet* PackPacket(int cmd, char* buffer, int buffer_len);
 Packet* ParsePacket(char* buffer, int len);
 
 int main() {
@@ -69,34 +70,29 @@ int main() {
 
 	while (true) { // 循环处理客户端请求，直到客户端断开连接
 		// 返回客户端发送的数据，阻塞等待客户端发送数据
-		// char char char char char: 接收到的数据
-		// 第一次用了四个字节，还剩一个字节
-		// char
-		// char(nchar) nchar nchar nchar: 接收到的数据
 		// RECV_BUFFER_SIZE - index 缓冲区大小
-
 		int len = recv(client_socket, buffer + index, RECV_BUFFER_SIZE - index, 0);
 		index += len; // index = 5
+
 		// 依照协议解析数据，把数据读出来
-		// char char char char char
 		// 把缓冲区总长度传入
 		Packet* packet = ParsePacket(buffer, index); // 假设解析了3个字节
 		index -= GetPacketLen(packet);
-		// char char char: char char index = 3
 		memmove(buffer, buffer + GetPacketLen(packet), index);
 		// 一个可持续缓冲区就准备好了
-		
-		// 换种打印方式
-		//fwrite(buffer, 1, len, stdout);
-		//fwrite("\r\n----\r\n", 1, 8, stdout);
 		printf("server recive data：%s\r\n", packet->body);
+		printf("server recive packet->header.magic：%x\r\n", packet->header.magic);
+		printf("server recive packet->header.cmd：%d\r\n", packet->header.cmd);
+		printf("server recive packet->header.body_len：%d\r\n", packet->header.body_len);
 		printf("----------");
-		free(packet);
+
 		// 7. 发送数据
-		//send(client_socket, buffer, 1024, 0);
-		//printf("服务器发送数据：%s\r\n", buffer);
+		Packet* pck = PackPacket(packet->header.cmd, packet->body, packet->header.body_len);
+		free(packet);
+		send(client_socket, (char*)&pck->header.magic, GetPacketLen(pck), 0);
+		printf("服务器发送数据：%s\r\n", buffer);
 		// 模拟服务器处理命令耗时过程
-		Sleep(500);
+		//Sleep(500);
 	}
 	// 关闭套接字
 	closesocket(client_socket);
@@ -110,6 +106,17 @@ int GetPacketLen(Packet* pck) {
 	if(pck != NULL) {
 		return sizeof(PacketHeader) + pck->header.body_len;
 	}
+}
+
+Packet* PackPacket(int cmd, char* buffer, int buffer_len) {
+	Packet* pck = (Packet*)malloc(sizeof(PacketHeader) + buffer_len);
+	pck->header.magic = 0x55AA77CC;
+	pck->header.cmd = cmd;
+	pck->header.body_len = buffer_len;
+	if (buffer_len > 0 && buffer != NULL) {
+		memcpy(pck->body, buffer, buffer_len);
+	}
+	return pck;
 }
 
 Packet* ParsePacket(char* buffer, int len) {
