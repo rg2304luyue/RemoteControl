@@ -29,6 +29,34 @@ enum CMD {
 	CMD_TESTCONNECT = 2026, // 测试连接命令
 };
 
+// 鼠标信息 1.按键 左键 中键 右键 2.状态 按下 放开 双击
+// 按键 + 状态
+enum ENUM_MOUSE {
+	MOUSE_MOVE = 1,	    // 鼠标移动
+	MOUSE_LDOWN = 2,    // 左键按下
+	MOUSE_LUP = 3,	    // 左键放开
+	MOUSE_RDOWN = 4,    // 右键按下
+	MOUSE_RUP = 5,	    // 右键放开
+	MOUSE_MDOWN = 6,    // 中键按下
+	MOUSE_MUP = 7,      // 中键放开
+	MOUSE_LCLICK = 8,   // 左键单击
+	MOUSE_RCLICK = 9,   // 右键单击
+	MOUSE_MCLICK = 10,  // 中键单击
+	MOUSE_LDBLCLK = 11, // 左键双击
+	MOUSE_RDBLCLK = 12, // 右键双击
+	MOUSE_MDBLCLK = 13  // 中键双击
+};
+
+struct Mouse {
+	int action; // 鼠标动作
+	POINT ptXY; // 鼠标坐标
+};
+
+struct Keyboard {
+	int virtual_code; // 虚拟码
+	int key_status;	  // 键盘按键状态 0 按下 1 放开 2 单击 3 双击
+};
+
 int GetPacketLen(Packet* pck);
 Packet* PackPacket(int cmd, char* buffer, int buffer_len);
 Packet* ParsePacket(char* buffer, int len);
@@ -167,11 +195,88 @@ int HandleScreen(Packet* packet) {
 	return 0;
 }
 int HandleMouse(Packet* packet) {
-	// 处理鼠标命令
+	// 从结构体中获取鼠标信息
+	Mouse mouse;
+	memcpy(&mouse.action, packet->body, packet->header.body_len);
+	printf("x, y: %d, %d\r\n", mouse.ptXY.x, mouse.ptXY.y);
+	// 模拟鼠标事件
+	// 设置鼠标位置
+	SetCursorPos(mouse.ptXY.x, mouse.ptXY.y);
+	switch (mouse.action)
+	{
+	case MOUSE_MOVE:	 // 鼠标移动
+		SetCursorPos(mouse.ptXY.x, mouse.ptXY.y);
+		break;
+	case MOUSE_LDOWN:    // 左键按下
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_LUP:	     // 左键放开
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_RDOWN:    // 右键按下
+		mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_RUP:	     // 右键放开
+		mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_MDOWN:    // 中键按下
+		mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_MUP:      // 中键放开
+		mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_LCLICK:   // 左键单击
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_RCLICK:   // 右键单击
+		mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_MCLICK:   // 中键单击
+		mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_LDBLCLK:  // 左键双击
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_RDBLCLK: // 右键双击
+		mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	case MOUSE_MDBLCLK: // 中键双击
+		mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+		mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+		break;
+	default:
+		printf("未知鼠标事件: %d\r\n", mouse.action);
+		break;
+	}
 	return 0;
 }
 int HandleKeyboard(Packet* packet) {
 	// 处理键盘命令
+	Keyboard key_board;
+	memcpy(&key_board.virtual_code, packet->body, packet->header.body_len);
+	INPUT input = { 0 };
+	input.type = INPUT_KEYBOARD;
+	input.ki.wVk = key_board.virtual_code;
+	input.ki.wScan = 0;
+	input.ki.time = 0;
+	input.ki.dwFlags = key_board.key_status; // 按下还是放开
+	input.ki.dwExtraInfo = 0;
+
+	int ret = SendInput(1, &input, sizeof(INPUT));
+	if (ret > 0) {
+		printf("成功执行键盘事件: %d\r\n", key_board.virtual_code);
+	}
 	return 0;
 }
 int HandleTestConnect(Packet* packet) {
@@ -256,7 +361,7 @@ int InitServer() {
 	server_addr.sin_family = AF_INET; // IPv4协议
 	server_addr.sin_port = ntohs(9999); // 0~65535，0~1023为系统保留端口，1024~49151为注册端口，49152~65535为动态/私有端口
 	// inet_addr函数将点分十进制的IP地址转换为网络字节序的二进制形式
-	server_addr.sin_addr.S_un.S_addr = inet_addr("100.74.5.23"); // 0.0.0.0 监听服务器上的所有ip
+	server_addr.sin_addr.S_un.S_addr = inet_addr("100.64.86.198"); // 0.0.0.0 监听服务器上的所有ip
 	if (bind(g_server_socket, (sockaddr*)&server_addr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
 		printf("绑定服务器socket失败\r\n");
 		return -2;

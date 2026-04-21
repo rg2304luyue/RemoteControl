@@ -308,7 +308,7 @@ int InitSocket() {
 
 	g_server_addr.sin_family = AF_INET; // IPv4协议
 	g_server_addr.sin_port = ntohs(9999); // 转为网络字节序
-	g_server_addr.sin_addr.S_un.S_addr = inet_addr("100.74.5.23"); // 服务器IP地址
+	g_server_addr.sin_addr.S_un.S_addr = inet_addr("100.64.86.198"); // 服务器IP地址
 }
 
 int GetPacketLen(Packet* pck) {
