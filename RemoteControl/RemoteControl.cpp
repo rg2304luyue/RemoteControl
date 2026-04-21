@@ -47,41 +47,41 @@ int main() {
 		return 0;
 	}
 
-	//// 5. 接受客户端连接，会返回客户端socket
-	//SOCKADDR_IN client_addr;
-	//int client_addr_len = sizeof(SOCKADDR_IN);
-	//printf("等待客户端连接...\r\n");
-	//// 阻塞等待客户端连接
-	//SOCKET client_socket = accept(g_server_socket, (sockaddr*)&client_addr, &client_addr_len);
-	//printf("客户端连接成功\r\n");
+	// 5. 接受客户端连接，会返回客户端socket
+	SOCKADDR_IN client_addr;
+	int client_addr_len = sizeof(SOCKADDR_IN);
+	printf("等待客户端连接...\r\n");
+	// 阻塞等待客户端连接
+	g_client_socket = accept(g_server_socket, (sockaddr*)&client_addr, &client_addr_len);
+	printf("客户端连接成功\r\n");
 
-	//// 6. 处理客户端请求
-	//char* buffer = (char*)malloc(RECV_BUFFER_SIZE);
-	//// 记录缓冲区当前数据的长度
-	//static int index = 0;
+	// 6. 处理客户端请求
+	char* buffer = (char*)malloc(RECV_BUFFER_SIZE);
+	// 记录缓冲区当前数据的长度
+	static int index = 0;
 
-	//while (true) { // 循环处理客户端请求，直到客户端断开连接
-	//	// 返回客户端发送的数据，阻塞等待客户端发送数据
-	//	// RECV_BUFFER_SIZE - index 缓冲区大小
-	//	int len = recv(client_socket, buffer + index, RECV_BUFFER_SIZE - index, 0);
-	//	index += len; // index = 5
+	while (true) { // 循环处理客户端请求，直到客户端断开连接
+		// 返回客户端发送的数据，阻塞等待客户端发送数据
+		// RECV_BUFFER_SIZE - index 缓冲区大小
+		int len = recv(g_client_socket, buffer + index, RECV_BUFFER_SIZE - index, 0);
+		index += len;
 
-	//	// 依照协议解析数据，把数据读出来
-	//	// 把缓冲区总长度传入
-	//	Packet* packet = ParsePacket(buffer, index);
-	//	index -= GetPacketLen(packet);
-	//	memmove(buffer, buffer + GetPacketLen(packet), index);
-	//	// 一个可持续缓冲区就准备好了
+		// 依照协议解析数据，把数据读出来
+		// 把缓冲区总长度传入
+		Packet* packet = ParsePacket(buffer, index);
+		index -= GetPacketLen(packet);
+		memmove(buffer, buffer + GetPacketLen(packet), index);
+		// 一个可持续缓冲区就准备好了
 
-	//	HandleCommand(packet);
-	//	free(packet);
-	//}
-	//// 关闭套接字
-	//closesocket(client_socket);
-	//closesocket(g_server_socket);
-	//// 清除
-	//WSACleanup();
-	HandleScreen(NULL);
+		HandleCommand(packet); // 处理命令
+		free(packet);
+	}
+	// 关闭套接字
+	closesocket(g_client_socket);
+	closesocket(g_server_socket);
+	// 清除
+	WSACleanup();
+	//HandleScreen(NULL);
 	return 0;
 }
 
@@ -151,7 +151,7 @@ int HandleScreen(Packet* packet) {
 		int len = GlobalSize(hMen);
 		// 发送数据
 		Packet* packet = PackPacket(CMD_SCREEN, pdata, len);
-		send(g_client_socket,(char*) & packet->header.magic, sizeof(PacketHeader) + len, 0);
+		int send_len = send(g_client_socket,(char*) & packet->header.magic, sizeof(PacketHeader) + len, 0);
 		free(packet);
 		// 解锁内存
 		GlobalUnlock(hMen);
@@ -217,6 +217,14 @@ Packet* ParsePacket(char* buffer, int len) {
 	index += 4;
 	pck.header.body_len = *(int*)(buffer + index);
 	index += 4;
+	// 客户端单纯发个命令，没有用户数据的时候也要处理
+	// 获取数据
+	if (pck.header.body_len == 0) {
+		ppck = (Packet*)malloc(sizeof(PacketHeader));
+		// 拷贝包头
+		memcpy(&ppck->header, &pck.header, sizeof(PacketHeader));
+		return ppck;
+	}
 	// 解析数据
 	if (pck.header.body_len > 0) {
 		// 创建接受缓冲区
@@ -227,6 +235,7 @@ Packet* ParsePacket(char* buffer, int len) {
 		memcpy(&ppck->header, &pck.header, sizeof(PacketHeader));
 		return ppck;
 	}
+	return NULL;
 }
 
 int InitServer() {
@@ -247,7 +256,7 @@ int InitServer() {
 	server_addr.sin_family = AF_INET; // IPv4协议
 	server_addr.sin_port = ntohs(9999); // 0~65535，0~1023为系统保留端口，1024~49151为注册端口，49152~65535为动态/私有端口
 	// inet_addr函数将点分十进制的IP地址转换为网络字节序的二进制形式
-	server_addr.sin_addr.S_un.S_addr = inet_addr("100.64.54.246"); // 0.0.0.0 监听服务器上的所有ip
+	server_addr.sin_addr.S_un.S_addr = inet_addr("100.74.5.23"); // 0.0.0.0 监听服务器上的所有ip
 	if (bind(g_server_socket, (sockaddr*)&server_addr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
 		printf("绑定服务器socket失败\r\n");
 		return -2;
