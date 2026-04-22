@@ -97,15 +97,16 @@ int main() {
 		// 依照协议解析数据，把数据读出来
 		// 把缓冲区总长度传入
 		Packet* packet = ParsePacket(buffer, index);
-		while (packet != NULL && index > 0) {
+		while (index > 0) {
+			if (packet == NULL) break; // 解析失败，继续等待客户端发送数据
 			index -= GetPacketLen(packet);
 			memmove(buffer, buffer + GetPacketLen(packet), index);
 			// 一个可持续缓冲区就准备好了
 
 			HandleCommand(packet); // 处理命令
 			free(packet);
+			packet = ParsePacket(buffer, index);
 		}
-		packet = ParsePacket(buffer, index);
 	}
 	// 关闭套接字
 	closesocket(g_client_socket);
