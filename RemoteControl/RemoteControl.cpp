@@ -92,6 +92,10 @@ int main() {
 		// 返回客户端发送的数据，阻塞等待客户端发送数据
 		// RECV_BUFFER_SIZE - index 缓冲区大小
 		int len = recv(g_client_socket, buffer + index, RECV_BUFFER_SIZE - index, 0);
+		if (len <= 0) {
+			printf("客户端断开连接\r\n");
+			break;
+		}
 		index += len;
 
 		// 依照协议解析数据，把数据读出来
@@ -295,6 +299,7 @@ int GetPacketLen(Packet* pck) {
 	if(pck != NULL) {
 		return sizeof(PacketHeader) + pck->header.body_len;
 	}
+	return 0;
 }
 
 Packet* PackPacket(int cmd, char* buffer, int buffer_len) {
@@ -366,7 +371,7 @@ int InitServer() {
 	// 准备一个地址
 	SOCKADDR_IN server_addr;
 	server_addr.sin_family = AF_INET; // IPv4协议
-	server_addr.sin_port = ntohs(9999); // 0~65535，0~1023为系统保留端口，1024~49151为注册端口，49152~65535为动态/私有端口
+	server_addr.sin_port = htons(9999); // 0~65535，0~1023为系统保留端口，1024~49151为注册端口，49152~65535为动态/私有端口
 	// inet_addr函数将点分十进制的IP地址转换为网络字节序的二进制形式
 	server_addr.sin_addr.S_un.S_addr = inet_addr("100.64.86.198"); // 0.0.0.0 监听服务器上的所有ip
 	if (bind(g_server_socket, (sockaddr*)&server_addr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {

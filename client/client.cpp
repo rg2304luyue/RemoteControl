@@ -141,9 +141,9 @@ LRESULT CALLBACK winProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				mouse.action = MOUSE_LDOWN;
 				mouse.ptXY.x = rxPos;
 				mouse.ptXY.y = ryPos;
-				//Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
-				//send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
-				//free(pack);
+				Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				free(pack);
 			}
 		}
 			break;
@@ -336,6 +336,7 @@ Packet* ParsePacket(char* buffer, int len) {
 		memcpy(&ppck->header, &pck.header, sizeof(PacketHeader));
 		return ppck;
 	}
+	return NULL;
 }
 
 DWORD WINAPI SendScreenCallBack(LPVOID lpThreadParammeter) {
@@ -441,7 +442,7 @@ int InitSocket() {
 	}
 
 	g_server_addr.sin_family = AF_INET; // IPv4协议
-	g_server_addr.sin_port = ntohs(9999); // 转为网络字节序
+	g_server_addr.sin_port = htons(9999); // 转为网络字节序
 	g_server_addr.sin_addr.S_un.S_addr = inet_addr("100.64.86.198"); // 服务器IP地址
 }
 
@@ -449,4 +450,5 @@ int GetPacketLen(Packet* pck) {
 	if (pck != NULL) {
 		return sizeof(PacketHeader) + pck->header.body_len;
 	}
+	return 0;
 }
