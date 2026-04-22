@@ -26,6 +26,34 @@ enum CMD {
 	CMD_TESTCONNECT = 2026, // 测试连接命令
 };
 
+// 鼠标信息 1.按键 左键 中键 右键 2.状态 按下 放开 双击
+// 按键 + 状态
+enum ENUM_MOUSE {
+	MOUSE_MOVE = 1,	    // 鼠标移动
+	MOUSE_LDOWN = 2,    // 左键按下
+	MOUSE_LUP = 3,	    // 左键放开
+	MOUSE_RDOWN = 4,    // 右键按下
+	MOUSE_RUP = 5,	    // 右键放开
+	MOUSE_MDOWN = 6,    // 中键按下
+	MOUSE_MUP = 7,      // 中键放开
+	MOUSE_LCLICK = 8,   // 左键单击
+	MOUSE_RCLICK = 9,   // 右键单击
+	MOUSE_MCLICK = 10,  // 中键单击
+	MOUSE_LDBLCLK = 11, // 左键双击
+	MOUSE_RDBLCLK = 12, // 右键双击
+	MOUSE_MDBLCLK = 13  // 中键双击
+};
+
+struct Mouse {
+	int action; // 鼠标动作
+	POINT ptXY; // 鼠标坐标
+};
+
+struct Keyboard {
+	int virtual_code; // 虚拟码
+	int key_status;	  // 键盘按键状态 0 按下 1 放开 2 单击 3 双击
+};
+
 Packet* PackPacket(int cmd, char* buffer, int buffer_len);
 Packet* ParsePacket(char* buffer, int len);
 int InitSocket();
@@ -34,6 +62,8 @@ SOCKET g_server_socket;
 SOCKADDR_IN g_server_addr;
 HWND g_hwnd = NULL; // 全局变量，保存窗口句柄
 CImage g_image;
+int g_remote_width = -1;
+int g_remote_height = -1;
 CRITICAL_SECTION g_cri_sec; // 保护g_image的锁
 
 LRESULT CALLBACK winProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -69,10 +99,162 @@ LRESULT CALLBACK winProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				SetStretchBltMode(hdc, HALFTONE);
 			}
 			EndPaint(hwnd, &ps);
-			break;
 		}
+			break;
+		case WM_MOUSEMOVE: {  // 鼠标移动
+			// 获取鼠标坐标(客户端)
+			int xPos = LOWORD(lParam);
+			int yPos = HIWORD(lParam);
+			RECT client_rect;
+			GetClientRect(hwnd, &client_rect);
+			int client_width = client_rect.right - client_rect.left;
+			int client_height = client_rect.bottom - client_rect.top;
+			if (g_remote_width != -1 && g_remote_height != -1) {
+				// 把鼠标坐标转换成远程屏幕的坐标
+				int rxPos = xPos * g_remote_width / client_width;
+				int ryPos = yPos * g_remote_height / client_height;
+				// 打包成数据包发送给服务器
+				Mouse mouse;
+				mouse.action = MOUSE_MOVE;
+				mouse.ptXY.x = rxPos;
+				mouse.ptXY.y = ryPos;
+				Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				free(pack);
+			}
+		}
+			break;
+		case WM_LBUTTONDOWN:{ // 鼠标左键按下
+			// 获取鼠标坐标(客户端)
+			int xPos = LOWORD(lParam);
+			int yPos = HIWORD(lParam);
+			RECT client_rect;
+			GetClientRect(hwnd, &client_rect);
+			int client_width = client_rect.right - client_rect.left;
+			int client_height = client_rect.bottom - client_rect.top;
+			if (g_remote_width != -1 && g_remote_height != -1) {
+				// 把鼠标坐标转换成远程屏幕的坐标
+				int rxPos = xPos * g_remote_width / client_width;
+				int ryPos = yPos * g_remote_height / client_height;
+				// 打包成数据包发送给服务器
+				Mouse mouse;
+				mouse.action = MOUSE_LDOWN;
+				mouse.ptXY.x = rxPos;
+				mouse.ptXY.y = ryPos;
+				//Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				//send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				//free(pack);
+			}
+		}
+			break;
+		case WM_LBUTTONUP: {   // 鼠标左键抬起	
+			// 获取鼠标坐标(客户端)
+			int xPos = LOWORD(lParam);
+			int yPos = HIWORD(lParam);
+			RECT client_rect;
+			GetClientRect(hwnd, &client_rect);
+			int client_width = client_rect.right - client_rect.left;
+			int client_height = client_rect.bottom - client_rect.top;
+			if (g_remote_width != -1 && g_remote_height != -1) {
+				// 把鼠标坐标转换成远程屏幕的坐标
+				int rxPos = xPos * g_remote_width / client_width;
+				int ryPos = yPos * g_remote_height / client_height;
+				// 打包成数据包发送给服务器
+				Mouse mouse;
+				mouse.action = MOUSE_LUP;
+				mouse.ptXY.x = rxPos;
+				mouse.ptXY.y = ryPos;
+				Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				free(pack);
+			}
+		}
+			break;
+		case WM_LBUTTONDBLCLK: { // 鼠标左键双击
+			// 获取鼠标坐标(客户端)
+			int xPos = LOWORD(lParam);
+			int yPos = HIWORD(lParam);
+			RECT client_rect;
+			GetClientRect(hwnd, &client_rect);
+			int client_width = client_rect.right - client_rect.left;
+			int client_height = client_rect.bottom - client_rect.top;
+			if (g_remote_width != -1 && g_remote_height != -1) {
+				// 把鼠标坐标转换成远程屏幕的坐标
+				int rxPos = xPos * g_remote_width / client_width;
+				int ryPos = yPos * g_remote_height / client_height;
+				// 打包成数据包发送给服务器
+				Mouse mouse;
+				mouse.action = MOUSE_LDBLCLK;
+				mouse.ptXY.x = rxPos;
+				mouse.ptXY.y = ryPos;
+				Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				free(pack);
+			}
+		}
+			break;
+		case WM_RBUTTONDOWN: { // 鼠标右键按下
+			// 获取鼠标坐标(客户端)
+			int xPos = LOWORD(lParam);
+			int yPos = HIWORD(lParam);
+			RECT client_rect;
+			GetClientRect(hwnd, &client_rect);
+			int client_width = client_rect.right - client_rect.left;
+			int client_height = client_rect.bottom - client_rect.top;
+			if (g_remote_width != -1 && g_remote_height != -1) {
+				// 把鼠标坐标转换成远程屏幕的坐标
+				int rxPos = xPos * g_remote_width / client_width;
+				int ryPos = yPos * g_remote_height / client_height;
+				// 打包成数据包发送给服务器
+				Mouse mouse;
+				mouse.action = MOUSE_RDOWN;
+				mouse.ptXY.x = rxPos;
+				mouse.ptXY.y = ryPos;
+				Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				free(pack);
+			}
+		}
+			break;
+		case WM_RBUTTONUP: {  // 鼠标右键抬起
+			// 获取鼠标坐标(客户端)
+			int xPos = LOWORD(lParam);
+			int yPos = HIWORD(lParam);
+			RECT client_rect;
+			GetClientRect(hwnd, &client_rect);
+			int client_width = client_rect.right - client_rect.left;
+			int client_height = client_rect.bottom - client_rect.top;
+			if (g_remote_width != -1 && g_remote_height != -1) {
+				// 把鼠标坐标转换成远程屏幕的坐标
+				int rxPos = xPos * g_remote_width / client_width;
+				int ryPos = yPos * g_remote_height / client_height;
+				// 打包成数据包发送给服务器
+				Mouse mouse;
+				mouse.action = MOUSE_RUP;
+				mouse.ptXY.x = rxPos;
+				mouse.ptXY.y = ryPos;
+				Packet* pack = PackPacket(CMD_MOUSE, (char*)&mouse, sizeof(Mouse));
+				send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+				free(pack);
+			}
+		}
+			break;
+		// 键盘信息
+		case WM_KEYDOWN: 
+		case WM_SYSKEYDOWN: {
+			// 拿到虚拟键码
+			// 发送数据
+			Keyboard key_board;
+			key_board.virtual_code = wParam;
+			key_board.key_status = 0; // 按下
+			Packet* pack = PackPacket(CMD_KEYBOARD, (char*)&key_board.virtual_code, sizeof(Keyboard));
+			send(g_server_socket, (char*)&pack->header.magic, GetPacketLen(pack), 0);
+			free(pack);
+		}
+			break;
 	default:
 		return DefWindowProc(hwnd, msg, wParam, lParam); // 默认处理其他消息
+		break;
 	}
 	return 0;
 }
@@ -111,58 +293,6 @@ int WINAPI WinMain(
 		DispatchMessage(&msg);
 	}
 }
-
-
-// main函数是控制台的入口
-//int main() {
-//	//// 2. 连接服务器
-//	//if (connect(g_server_socket, (sockaddr*)&g_server_addr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
-//	//	printf("连接服务器失败\r\n");
-//	//	return 0;
-//	//}
-//	//printf("连接服务器成功\r\n");
-//
-//	//// 3. 发送数据
-//	//char buffer[1024];
-//	//char* recv_buffer = (char*)malloc(RECV_BUFFER_SIZE);
-//	//int count = 0; // 记录发送数据的次数
-//	//while (true) {
-//	//	count++;
-//	//	// 准备发送数据 sprintf: 把一个格式化字符串写入缓冲区
-//	//	//sprintf_s(buffer, "packet:%d", count);
-//	//	// 接收用户输入 stdin: 标准输入，stdout: 标准输出，stderr: 标准错误输出
-//	//	printf("请输入要发送的数据：");
-//	//	fgets(buffer, 1024, stdin);
-//	//	// 获取屏幕
-//	//	Packet* send_packet = PackPacket(1, buffer, 10);
-//	//	send(g_server_socket, (char*)&send_packet->header.magic, send_packet->header.body_len + sizeof(PacketHeader), 0);
-//	//	// 释放内存
-//	//	free(send_packet);
-//	//	printf("client send data：%s\r\n", buffer);
-//
-//	//	// 等待服务器处理命令，模拟服务器处理命令耗时过程
-//	//	int len = recv(g_server_socket, recv_buffer, RECV_BUFFER_SIZE, 0);
-//	//	if(len > 0) {
-//	//		Packet* recv_pck = ParsePacket(recv_buffer, len);
-//	//		printf("client recive data：%s\r\n", recv_pck->body);
-//	//		printf("client recive packet->header.magic：%x\r\n", recv_pck->header.magic);
-//	//		printf("client recive packet->header.cmd：%d\r\n", recv_pck->header.cmd);
-//	//		printf("client recive packet->header.body_len：%d\r\n", recv_pck->header.body_len);
-//	//		if (recv_pck->header.cmd == 1) {
-//	//			// 服务器返回了屏幕数据
-//	//			// 解析显示数据
-//	//			
-//	//		}
-//	//		free(recv_pck);
-//	//	}
-//	//	// Sleep可以让程序休眠
-//	//	//Sleep(10);
-//	//}
-//	//
-//	//closesocket(g_server_socket);
-//	//WSACleanup();
-//	//return 0;
-//}
 
 Packet* PackPacket(int cmd, char* buffer, int buffer_len) {
 	Packet* pck = (Packet*)malloc(sizeof(PacketHeader) + buffer_len);
@@ -243,6 +373,10 @@ DWORD WINAPI SendScreenCallBack(LPVOID lpThreadParammeter) {
 						g_image.Destroy();
 					}
 					g_image.Load(pStream);
+					if (g_remote_width == -1 && g_remote_height == -1) {
+						g_remote_width = g_image.GetWidth();
+						g_remote_height = g_image.GetHeight();
+					}
 					LeaveCriticalSection(&g_cri_sec);
 
 					// 更新画面，将图片移到窗口上，所有和UI相关的操作都要放在主线程里去做

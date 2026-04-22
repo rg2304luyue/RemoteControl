@@ -97,12 +97,15 @@ int main() {
 		// 依照协议解析数据，把数据读出来
 		// 把缓冲区总长度传入
 		Packet* packet = ParsePacket(buffer, index);
-		index -= GetPacketLen(packet);
-		memmove(buffer, buffer + GetPacketLen(packet), index);
-		// 一个可持续缓冲区就准备好了
+		while (packet != NULL && index > 0) {
+			index -= GetPacketLen(packet);
+			memmove(buffer, buffer + GetPacketLen(packet), index);
+			// 一个可持续缓冲区就准备好了
 
-		HandleCommand(packet); // 处理命令
-		free(packet);
+			HandleCommand(packet); // 处理命令
+			free(packet);
+		}
+		packet = ParsePacket(buffer, index);
 	}
 	// 关闭套接字
 	closesocket(g_client_socket);
@@ -194,6 +197,7 @@ int HandleScreen(Packet* packet) {
 
 	return 0;
 }
+
 int HandleMouse(Packet* packet) {
 	// 从结构体中获取鼠标信息
 	Mouse mouse;
@@ -261,6 +265,7 @@ int HandleMouse(Packet* packet) {
 	}
 	return 0;
 }
+
 int HandleKeyboard(Packet* packet) {
 	// 处理键盘命令
 	Keyboard key_board;
@@ -279,6 +284,7 @@ int HandleKeyboard(Packet* packet) {
 	}
 	return 0;
 }
+
 int HandleTestConnect(Packet* packet) {
 	// 处理测试连接命令
 	return 0;
